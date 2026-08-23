@@ -7,17 +7,17 @@
 ### Docker
 
 ```bash
-docker run -d -p 3000:3000 --name placehoder-img ghcr.io/yourname/placehoder-img:latest
+docker run -d -p 8227:8227 --name placehoder-img ghcr.io/HunterXing/placehoder-img:latest
 # 或本地构建
 docker build -t placehoder-img .
-docker run -d -p 3000:3000 --name placehoder-img placehoder-img
+docker run -d -p 8227:8227 --name placehoder-img placehoder-img
 ```
 
 ### 直接运行（需 Node 18+）
 
 ```bash
 npm install
-npm start   # 监听 :3000
+PORT=8227 npm start   # 默认 8227，可用 PORT 环境变量覆盖
 ```
 
 ## 用法

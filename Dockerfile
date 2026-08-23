@@ -24,7 +24,7 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=8227
 COPY --from=build /app/package.json /app/
 COPY --from=build /app/node_modules/ /app/node_modules/
 COPY --from=build /app/server.js /app/server.js
@@ -34,8 +34,8 @@ COPY --from=build /app/public/ /app/public/
 RUN addgroup -S app && adduser -S app -G app
 USER app
 
-EXPOSE 3000
+EXPOSE 8227
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/100x100 >/dev/null 2>&1 || exit 1
+  CMD wget -qO- http://127.0.0.1:8227/100x100 >/dev/null 2>&1 || exit 1
 
 CMD ["node", "server.js"]

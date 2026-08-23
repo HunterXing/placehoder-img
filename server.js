@@ -21,7 +21,7 @@ const sharp = require('sharp');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8227;
 
 // ---------- 工具函数 ----------
 
