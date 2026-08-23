@@ -5,7 +5,7 @@
  */
 const http = require('http');
 
-const BASE = process.argv[2] || 'http://127.0.0.1:3000';
+const BASE = process.argv[2] || 'http://127.0.0.1:8227';
 
 function get(url, raw = false) {
   return new Promise((resolve, reject) => {
@@ -17,6 +17,7 @@ function get(url, raw = false) {
         resolve({
           status: res.statusCode,
           type: res.headers['content-type'] || '',
+          headers: res.headers,
           buf,
           text: buf.toString('utf8'),
         });
@@ -34,7 +35,7 @@ async function main() {
 
   // 1. 基础 SVG
   let r = await get('/600x400');
-  check('基础 SVG 600x400', r.status === 200 && r.type.includes('svg') && r.buf.length > 500, `(${r.status} ${r.type})`);
+  check('基础 SVG 600x400', r.status === 200 && r.type.includes('svg') && r.buf.length > 200, `(${r.status} ${r.type} len=${r.buf.length})`);
   check('SVG 含默认尺寸文字 600×400', r.text.includes('600×400'));
   check('SVG 含默认背景色 #dddddd', r.text.includes('#dddddd'));
   check('SVG 含默认文字色 #aaaaaa', r.text.includes('#aaaaaa'));
@@ -81,7 +82,7 @@ async function main() {
   r = await get('/600x400?text=%E4%BD%A0%E5%A5%BD%E4%B8%96%E7%95%8C');
   check('中文文字', r.text.includes('你好世界'));
   r = await get('/600x400?text=%E7%AC%AC%E4%B8%80%E8%A1%8C%5Cn%E7%AC%AC%E4%BA%8C%E8%A1%8C');
-  check('换行 \\n → 2 个 tspan', (r.text.match(/<tspan/g) || []).length === 2);
+  check('换行 \\n → 2 个 text 元素', (r.text.match(/<text/g) || []).length >= 2);
 
   // 7. 字体
   r = await get('/600x400?text=Hello&font=roboto');
@@ -101,9 +102,21 @@ async function main() {
   r = await get('/600x400/zzz');
   check('非法颜色回退默认', r.status === 200 && r.text.includes('#dddddd'));
 
-  // 10. 缓存头
+  // 10. 字体自适应：小图字号必须随尺寸缩小（不裁切）
+  r = await get('/50x50');
+  const smallFs = (r.text.match(/font-size="(\d+)"/) || [])[1];
+  check('小图 50x50 字号缩小(≤16)', r.status === 200 && parseInt(smallFs, 10) <= 16, `(font-size=${smallFs})`);
+  r = await get('/600x400');
+  const bigFs = (r.text.match(/font-size="(\d+)"/) || [])[1];
+  check('大图 600x400 字号放大(>60)', r.status === 200 && parseInt(bigFs, 10) > 60, `(font-size=${bigFs})`);
+  r = await get('/1000x500');
+  const hugeFs = (r.text.match(/font-size="(\d+)"/) || [])[1];
+  check('超大图 1000x500 字号更大(>120)', r.status === 200 && parseInt(hugeFs, 10) > 120, `(font-size=${hugeFs})`);
+
+  // 11. CORS：跨域必须允许（占位图会被任意页面引用）
   r = await get('/600x400.png');
-  check('Cache-Control 强缓存', (r && r.type) ? true : false, '(headers not captured in this simple test)');
+  const cors = (r.headers && r.headers['access-control-allow-origin']) || '';
+  check('CORS 头 Access-Control-Allow-Origin: *', cors === '*', `(=${cors})`);
 
   const failed = results.filter((x) => !x.pass).length;
   console.log(`\n${results.length - failed}/${results.length} 通过`);

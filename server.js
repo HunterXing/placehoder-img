@@ -23,6 +23,20 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8227;
 
+// ---------- CORS 支持 ----------
+// 占位图会被任意域名/页面引用（公众号、网页、文档），必须允许跨域
+app.use((req, res, next) => {
+  // 允许所有来源；占位图是公开资源，无需限制
+  res.set('Access-Control-Allow-Origin', '*');
+  // 预检请求（跨域 POST/自定义头时需要）
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 // ---------- 工具函数 ----------
 
 /** 颜色名 → hex（常见 CSS 颜色名，够用） */
@@ -105,7 +119,9 @@ function defaultText(w, h) {
 
 /** 根据字体名返回 font-family 栈 */
 function fontStack(font) {
-  const CJK = '"Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
+  // 跨平台中文字体栈（Noto=Linux/Docker, PingFang/Hiragino=macOS, YaHei=Windows）
+  // ⚠️ 注意：字体名必须无引号！librsvg(sharp) 解析带引号的 font-family 列表有 bug，会导致 CJK 渲染纵向拉伸变形
+  const CJK = 'Noto Sans CJK SC, Noto Sans SC, Source Han Sans SC, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, sans-serif';
   const known = {
     cn: CJK,
     cjk: CJK,
@@ -115,11 +131,11 @@ function fontStack(font) {
   if (!font) return CJK;
   const key = String(font).toLowerCase();
   if (known[key]) return known[key];
-  // Google Fonts 常见字体名（首字母大写规范化，参考实现对齐）
+  // Google Fonts 常见字体名（首字母大写规范化，无引号）
   const safe = String(font).trim().replace(/[^a-zA-Z0-9 ]/g, '');
   if (!safe) return CJK;
   const words = safe.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  return `"${words}", ${CJK}`;
+  return `${words}, ${CJK}`;
 }
 
 /** 生成 SVG 字符串 */
@@ -128,12 +144,13 @@ function buildSvg({ width, height, bg, fg, text, font, scale = 1 }) {
   const displayH = height * scale;
   const family = fontStack(font);
 
-  // 文字大小：与参考一致，基准 115，随高度缩放（@2x 时放大）
-  let fontSize = Math.max(16, Math.min(115, Math.round(displayH / 3.5)));
-  if (font && !['cn', 'cjk', 'default', 'sans-serif'].includes(String(font).toLowerCase())) {
-    // 拉丁字体略大
-    fontSize = Math.max(16, Math.min(130, Math.round(displayH / 3.2)));
-  }
+  // 字体大小：随图片尺寸自适应（参考占位图服务惯例）
+  // 基准：字号 = 高度 × 0.29（600x400 时 ≈ 115），并受宽度约束
+  // 小图自动缩小、大图放大，永不裁切
+  const isLatin = font && !['cn', 'cjk', 'default', 'sans-serif'].includes(String(font).toLowerCase());
+  const ratio = isLatin ? 0.33 : 0.29;
+  let fontSize = Math.round(Math.min(displayH * ratio, displayW * ratio * 0.75));
+  fontSize = Math.max(8, fontSize);
 
   // 多行文字：\n 或 \\n 分隔
   const lines = String(text || defaultText(width, height))
@@ -143,46 +160,41 @@ function buildSvg({ width, height, bg, fg, text, font, scale = 1 }) {
   const totalH = lines.length * lineHeight;
   const startY = Math.round((displayH - totalH) / 2 + fontSize * 0.82);
 
-  const tspans = lines.map((ln, i) => {
+  // 每行一个独立 <text>（不用 <tspan>——librsvg 对 tspan 内的 CJK 渲染有变形 bug）
+  const textEls = lines.map((ln, i) => {
     const y = startY + i * lineHeight;
     // XML 转义
     const esc = ln.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-    return `<tspan x="50%" y="${y}">${esc}</tspan>`;
-  }).join('');
+    return `<text x="50%" y="${y}" fill="${fg}" font-family='${family}' font-size="${fontSize}" font-weight="bold" text-anchor="middle">${esc}</text>`;
+  }).join('\n');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" xml:lang="zh-CN" lang="zh-CN" width="${displayW}" height="${displayH}" viewBox="0 0 ${displayW} ${displayH}" role="img" aria-label="placeholder image">
-  <style>
-    text {
-      font-family: ${family};
-      font-synthesis: none;
-    }
-  </style>
   <rect width="100%" height="100%" fill="${bg}" />
-  <text x="50%" fill="${fg}" font-family="${family.replace(/"/g, '&quot;')}" font-size="${fontSize}" font-weight="600" text-anchor="middle">
-    ${tspans}
-  </text>
+  ${textEls}
 </svg>`;
 }
 
 /** 转 SVG → 目标光栅格式 */
 async function svgToFormat(svg, format, width, height) {
   if (format === 'svg') return { data: Buffer.from(svg), type: 'image/svg+xml; charset=utf-8' };
+  // 注意：SVG 的 width/height 已是目标尺寸（含 @2x 缩放），
+  // 直接按 SVG 渲染，不要 density+resize 双重缩放（会导致文字纵向拉伸变形）
   let out;
   if (format === 'jpg') {
-    out = await sharp(Buffer.from(svg), { density: 300 }).resize(width, height).jpeg({ quality: 92 }).toBuffer();
+    out = await sharp(Buffer.from(svg)).jpeg({ quality: 92 }).toBuffer();
     return { data: out, type: 'image/jpeg' };
   } else if (format === 'png') {
-    out = await sharp(Buffer.from(svg), { density: 300 }).resize(width, height).png().toBuffer();
+    out = await sharp(Buffer.from(svg)).png().toBuffer();
     return { data: out, type: 'image/png' };
   } else if (format === 'webp') {
-    out = await sharp(Buffer.from(svg), { density: 300 }).resize(width, height).webp({ quality: 90 }).toBuffer();
+    out = await sharp(Buffer.from(svg)).webp({ quality: 90 }).toBuffer();
     return { data: out, type: 'image/webp' };
   } else if (format === 'gif') {
-    out = await sharp(Buffer.from(svg), { density: 300 }).resize(width, height).gif().toBuffer();
+    out = await sharp(Buffer.from(svg)).gif().toBuffer();
     return { data: out, type: 'image/gif' };
   } else if (format === 'avif') {
-    out = await sharp(Buffer.from(svg), { density: 300 }).resize(width, height).avif({ quality: 80 }).toBuffer();
+    out = await sharp(Buffer.from(svg)).avif({ quality: 80 }).toBuffer();
     return { data: out, type: 'image/avif' };
   }
   return null;
