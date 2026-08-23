@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>placehoder · 轻量占位图服务</title>
+<style>
+  :root {
+    --bg-0: #0b0d14;
+    --bg-1: #12141d;
+    --bg-2: #1a1d2b;
+    --card: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.08);
+    --text: #e8eaf2;
+    --text-dim: #9aa0b4;
+    --text-faint: #6b7288;
+    --accent: #6d5df6;
+    --accent-2: #a78bfa;
+    --accent-3: #34d399;
+    --gradient: linear-gradient(135deg, #6d5df6 0%, #a78bfa 50%, #34d399 100%);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg-0);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* 背景光晕 */
+  .bg-glow {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(600px 400px at 15% 10%, rgba(109,93,246,0.22), transparent 60%),
+      radial-gradient(700px 500px at 85% 20%, rgba(167,139,250,0.14), transparent 60%),
+      radial-gradient(800px 600px at 50% 100%, rgba(52,211,153,0.10), transparent 60%);
+  }
+  .bg-grid {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.5;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%);
+  }
+
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ===== 顶部导航 ===== */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: rgba(11,13,20,0.7);
+    border-bottom: 1px solid var(--card-border);
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+  .brand-logo {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    background: var(--gradient); color: #fff; font-size: 15px; font-weight: 800;
+    box-shadow: 0 4px 14px rgba(109,93,246,0.4);
+  }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 14px; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    background: var(--gradient); color: #fff; border: none; border-radius: 10px;
+    padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(109,93,246,0.35); transition: transform .15s, box-shadow .2s;
+    text-decoration: none;
+  }
+  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(109,93,246,0.5); }
+
+  /* ===== Hero ===== */
+  .hero { padding: 88px 0 56px; text-align: center; position: relative; }
+  .hero::before {
+    content: ''; position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+    width: 480px; height: 180px; background: radial-gradient(ellipse, rgba(109,93,246,0.28), transparent 70%);
+    filter: blur(10px); pointer-events: none; z-index: -1;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(109,93,246,0.12); border: 1px solid rgba(109,93,246,0.3);
+    color: var(--accent-2); font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 24px;
+  }
+  .hero-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-3); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+  .hero h1 {
+    font-size: clamp(34px, 5.5vw, 56px); font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(120deg, #fff 30%, var(--accent-2) 70%, var(--accent-3));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 20px; line-height: 1.15;
+  }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 640px; margin: 0 auto 40px; text-wrap: balance; }
+
+  /* ===== 预览控制台 ===== */
+  .console {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 20px;
+    padding: 28px; box-shadow: var(--shadow); backdrop-filter: blur(12px);
+    text-align: left; margin-bottom: 72px;
+  }
+  .console-label { font-size: 13px; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .console-input {
+    width: 100%; background: rgba(0,0,0,0.35); border: 1px solid var(--card-border);
+    border-radius: 12px; color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px; padding: 16px 18px; outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .console-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(109,93,246,0.18); }
+  .console-row { display: flex; gap: 14px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .console-btn {
+    background: var(--gradient); color: #fff; border: none; border-radius: 12px;
+    padding: 13px 26px; font-size: 15px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(109,93,246,0.4); transition: transform .15s, box-shadow .2s;
+  }
+  .console-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(109,93,246,0.55); }
+  .console-btn:active { transform: translateY(0); }
+  .console-copy {
+    background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 13px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .2s;
+  }
+  .console-copy:hover { background: rgba(255,255,255,0.13); }
+  .console-status { font-size: 13px; color: var(--text-faint); margin-top: 12px; font-family: ui-monospace, monospace; }
+  .preview-wrap { margin-top: 24px; border-radius: 14px; overflow: hidden; background: repeating-conic-gradient(#1a1d2b 0% 25%, #12141d 0% 50%) 0 0 / 22px 22px; border: 1px solid var(--card-border); display: grid; place-items: center; min-height: 300px; padding: 20px; }
+  .preview-wrap img { max-width: 100%; max-height: 520px; display: block; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+
+  /* ===== 快速参数卡 ===== */
+  .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 64px; }
+  .preset-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
+    padding: 20px; cursor: pointer; transition: transform .2s, border-color .2s, box-shadow .2s;
+  }
+  .preset-card:hover { transform: translateY(-3px); border-color: rgba(109,93,246,0.4); box-shadow: 0 12px 32px rgba(0,0,0,0.35); }
+  .preset-card .preset-name { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+  .preset-card .preset-url { font-family: ui-monospace, monospace; font-size: 12px; color: var(--accent-2); word-break: break-all; }
+  .preset-thumb { width: 100%; height: 96px; border-radius: 8px; margin-bottom: 12px; display: grid; place-items: center; overflow: hidden; }
+  .preset-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ===== 文档区 ===== */
+  .section { margin-bottom: 80px; }
+  .section-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.01em; }
+  .section-sub { color: var(--text-dim); margin-bottom: 32px; }
+  .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .doc-card {
+    background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
+    padding: 24px;
+  }
+  .doc-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .doc-card h3 .num { color: var(--accent-2); font-family: ui-monospace, monospace; font-size: 13px; }
+  .doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .doc-table th { text-align: left; color: var(--text-faint); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--card-border); }
+  .doc-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-dim); }
+  .doc-table td code { background: rgba(109,93,246,0.12); color: var(--accent-2); padding: 2px 6px; border-radius: 5px; font-size: 12px; font-family: ui-monospace, monospace; }
+  .code-block {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); border-radius: var(--radius-sm);
+    padding: 16px 18px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px; color: var(--text-dim); overflow-x: auto; margin-bottom: 12px;
+  }
+  .code-block .hl { color: var(--accent-2); }
+  .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .format-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-sm);
+    padding: 12px 16px; font-size: 13px;
+  }
+  .format-chip .ext { font-family: ui-monospace, monospace; color: var(--accent-2); font-weight: 600; }
+  .format-chip .desc { color: var(--text-faint); }
+
+  /* ===== Footer ===== */
+  .footer { border-top: 1px solid var(--card-border); padding: 32px 0 40px; text-align: center; color: var(--text-faint); font-size: 13px; }
+  .footer a { color: var(--accent-2); text-decoration: none; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--bg-2); border: 1px solid rgba(52,211,153,0.3); color: var(--text);
+    padding: 13px 22px; border-radius: 12px; font-size: 14px; font-weight: 500; z-index: 999;
+    transition: transform .35s cubic-bezier(.2,.9,.3,1.2); box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 640px) {
+    .hero { padding: 60px 0 40px; }
+    .nav-links { display: none; }
+    .console { padding: 18px; }
+    .console-row { flex-direction: column; align-items: stretch; }
+    .console-btn, .console-copy { text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<!-- 导航 -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <div class="brand">
+      <div class="brand-logo">▦</div>
+      <span>placehoder</span>
+    </div>
+    <div class="nav-links">
+      <a href="#playground">在线预览</a>
+      <a href="#examples">示例</a>
+      <a href="#docs">文档</a>
+    </div>
+    <a class="nav-cta" href="#playground">立即使用</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero">
+  <div class="container">
+    <div class="hero-badge"><span class="dot"></span> 轻量 · 快速 · 免安装 · 永久免费</div>
+    <h1>一行 URL，生成任意占位图</h1>
+    <p>为你的公众号排版、网页设计、文档配图提供即取即用的占位图片。支持 6 种格式、任意尺寸、自定义颜色与文字。</p>
+  </div>
+</header>
+
+<!-- 预览控制台 -->
+<section id="playground" class="section">
+  <div class="container">
+    <div class="console">
+      <div class="console-label">在线生成</div>
+      <input class="console-input" id="urlInput" value="/800x500/6d5df6/FFFFFF?text=%E4%BD%A0%E5%A5%BD%EF%BC%8C%E4%B8%96%E7%95%8C" spellcheck="false">
+      <div class="console-row">
+        <button class="console-btn" id="generateBtn">生成图片</button>
+        <button class="console-copy" id="copyBtn">复制 URL</button>
+        <button class="console-copy" id="downloadBtn">下载图片</button>
+      </div>
+      <div class="console-status" id="status">输入路径参数，实时预览</div>
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" alt="占位图预览">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 示例 -->
+<section id="examples" class="section">
+  <div class="container">
+    <h2 class="section-title">快速上手</h2>
+    <p class="section-sub">点击任意卡片，参数自动填入生成器</p>
+    <div class="presets" id="presets">
+      <div class="preset-card" data-url="/800x500/6d5df6/FFFFFF?text=Hero+%E5%A4%B4%E5%9B%BE">
+        <div class="preset-thumb"><img src="" data-src="/800x500/6d5df6/FFFFFF?text=Hero" alt="头图"></div>
+        <div class="preset-name">公众号头图</div>
+        <div class="preset-url">/800x500/6d5df6/FFFFFF?text=...</div>
+      </div>
+      <div class="preset-card" data-url="/600x400/34d399/0b0d14.png?text=%E6%95%B0%E6%8D%AE%E5%9B%BE">
+        <div class="preset-thumb"><img src="" data-src="/600x400/34d399/0b0d14.png?text=Data" alt="数据图"></div>
+        <div class="preset-name">数据配图</div>
+        <div class="preset-url">/600x400/34d399/0b0d14.png?text=...</div>
+      </div>
+      <div class="preset-card" data-url="/400/6d5df6/FFFFFF@2x.png?text=%E5%B9%B3%E6%96%B9%E5%9B%BE">
+        <div class="preset-thumb"><img src="" data-src="/400/6d5df6/FFFFFF@2x.png?text=Square" alt="方图"></div>
+        <div class="preset-name">正方形 · Retina</div>
+        <div class="preset-url">/400/6d5df6/FFFFFF@2x.png?text=...</div>
+      </div>
+      <div class="preset-card" data-url="/800x300/a78bfa/0b0d14.webp?text=%E6%A8%AA%E5%B9%85+%E6%96%87%E6%A1%88">
+        <div class="preset-thumb"><img src="" data-src="/800x300/a78bfa/0b0d14.webp?text=Banner" alt="横幅"></div>
+        <div class="preset-name">横幅 Banner</div>
+        <div class="preset-url">/800x300/a78bfa/0b0d14.webp?text=...</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 文档 -->
+<section id="docs" class="section">
+  <div class="container">
+    <h2 class="section-title">文档</h2>
+    <p class="section-sub">一个 URL 搞定一切，无需注册，无需上传。</p>
+
+    <div class="docs-grid">
+      <div class="doc-card">
+        <h3><span class="num">01</span> URL 规则</h3>
+        <table class="doc-table">
+          <tr><th>路径</th><th>含义</th></tr>
+          <tr><td><code>/WxH</code></td><td>指定宽高</td></tr>
+          <tr><td><code>/W</code></td><td>正方形</td></tr>
+          <tr><td><code>/WxH@2x</code></td><td>Retina 2x</td></tr>
+          <tr><td><code>/WxH/BG/FG</code></td><td>自定义颜色</td></tr>
+          <tr><td><code>.png/.jpg</code></td><td>输出格式</td></tr>
+          <tr><td><code>?text=</code></td><td>自定义文字</td></tr>
+          <tr><td><code>&font=</code></td><td>字体</td></tr>
+        </table>
+      </div>
+
+      <div class="doc-card">
+        <h3><span class="num">02</span> 支持格式</h3>
+        <div class="format-grid">
+          <div class="format-chip"><span class="ext">SVG</span><span class="desc">矢量·默认</span></div>
+          <div class="format-chip"><span class="ext">PNG</span><span class="desc">无损</span></div>
+          <div class="format-chip"><span class="ext">JPEG</span><span class="desc">有损</span></div>
+          <div class="format-chip"><span class="ext">WebP</span><span class="desc">现代</span></div>
+          <div class="format-chip"><span class="ext">GIF</span><span class="desc">动图</span></div>
+          <div class="format-chip"><span class="ext">AVIF</span><span class="desc">新一代</span></div>
+        </div>
+      </div>
+
+      <div class="doc-card" style="grid-column: 1 / -1;">
+        <h3><span class="num">03</span> 示例</h3>
+        <div class="code-block">
+          <span class="hl">/600x400</span> 默认灰底，文字"600×400"<br>
+          <span class="hl">/600x400/059669/FFFFFF</span> 绿底白字<br>
+          <span class="hl">/600x400/orange/white</span> 颜色名<br>
+          <span class="hl">/600x400/transparent/000</span> 透明背景<br>
+          <span class="hl">/600x400.png</span> PNG 格式<br>
+          <span class="hl">/600x400@2x.png</span> Retina → 1200×800<br>
+          <span class="hl">/600x400?text=Hello+World</span> 自定义文字<br>
+          <span class="hl">/600x400?text=%E4%BD%A0%E5%A5%BD&font=cn</span> 中文
+        </div>
+        <div style="color: var(--text-faint); font-size: 13px;">
+          尺寸范围 10 ~ 4000 像素；颜色支持 hex / 常用颜色名 / transparent；<code style="color:var(--accent-2)">\n</code> 可在 text 中换行。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    placehoder · 轻量占位图服务 · <a href="https://github.com/xingheng-cn/placehoder-img" target="_blank" rel="noopener">开源在 GitHub</a>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  const input = document.getElementById('urlInput');
+  const previewImg = document.getElementById('previewImg');
+  const wrap = document.getElementById('previewWrap');
+  const status = document.getElementById('status');
+  const toast = document.getElementById('toast');
+  let toastTimer;
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2400);
+  }
+
+  function buildUrl(path) {
+    var p = path || '/600x400';
+    if (!p.startsWith('/')) p = '/' + p;
+    return p;
+  }
+
+  function render() {
+    var url = buildUrl(input.value.trim() || '/600x400');
+    // 去掉可能的前缀
+    var clean = url.replace(/^https?:\/\/[^/]+/i, '');
+    var full = clean;
+    previewImg.src = full;
+    previewImg.onload = function () { status.textContent = '✓ ' + full + ' → ' + (previewImg.naturalWidth || '?') + 'x' + (previewImg.naturalHeight || '?'); };
+    previewImg.onerror = function () { status.textContent = '✗ 生成失败，请检查路径格式'; };
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', render);
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') render(); });
+
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var full = location.origin + buildUrl(input.value.trim() || '/600x400');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(full).then(function () { showToast('已复制完整 URL'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = full; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      showToast('已复制完整 URL');
+    }
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', function () {
+    var clean = buildUrl(input.value.trim() || '/600x400');
+    var full = clean;
+    var a = document.createElement('a');
+    a.href = full; a.download = 'placeholder' + (/\.[a-z]+$/i.test(full) ? '' : '.svg');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  // 预置卡片
+  var cards = document.querySelectorAll('.preset-card');
+  cards.forEach(function (card) {
+    var img = card.querySelector('img');
+    if (img && img.dataset.src) img.src = img.dataset.src;
+    card.addEventListener('click', function () {
+      input.value = card.dataset.url;
+      render();
+      document.getElementById('playground').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // 初始渲染
+  render();
+})();
+</script>
+</body>
+</html>

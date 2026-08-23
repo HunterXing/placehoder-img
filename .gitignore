@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+.env
+# 允许 public/ 下的静态页面
+!public/
+public/*
+!public/*.html
+!public/assets/

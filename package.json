@@ -1,0 +1,16 @@
+{
+  "name": "placehoder-img",
+  "version": "1.0.0",
+  "description": "轻量占位图服务 — 支持 SVG/PNG/JPEG/WebP/GIF/AVIF，尺寸/颜色/文字/字体/Retina 缩放",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "keywords": ["placeholder", "image", "svg", "sharp", "wechat"],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.2.1",
+    "sharp": "^0.35.3"
+  }
+}
