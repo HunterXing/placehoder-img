@@ -3,183 +3,344 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="placehoder 轻量占位图服务 · 一行 URL 生成支持中文的占位图，支持 SVG/PNG/JPEG/WebP/GIF/AVIF、任意尺寸、颜色与文字。">
 <title>placehoder · 轻量占位图服务</title>
 <style>
   :root {
-    --bg: #fafafa;
-    --bg-alt: #f3f4f6;
-    --card: #ffffff;
-    --border: #e5e7eb;
-    --border-strong: #d1d5db;
-    --text: #111827;
-    --text-dim: #6b7280;
-    --text-faint: #9ca3af;
-    --accent: #2563eb;
-    --accent-bg: #eff6ff;
-    --radius: 8px;
-    --mono: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+    --bg: #08090d;
+    --bg-2: #0e1018;
+    --surface: rgba(255,255,255,0.03);
+    --surface-hover: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.12);
+    --text: #ffffff;
+    --text-dim: rgba(255,255,255,0.55);
+    --text-faint: rgba(255,255,255,0.35);
+    --accent: #8b5cf6;
+    --accent-soft: rgba(139,92,246,0.14);
+    --accent-border: rgba(139,92,246,0.28);
+    --success: #34d399;
+    --radius-lg: 28px;
+    --radius-md: 18px;
+    --radius-sm: 14px;
+    --radius-pill: 999px;
+    --mono: ui-monospace, "SF Mono", "Menlo", "Consolas", "JetBrains Mono", monospace;
+    --sans: "Inter", "PingFang SC", "Noto Sans CJK SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-family: var(--sans);
     background: var(--bg);
     color: var(--text);
     line-height: 1.65;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
-  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  ::selection { background: rgba(167,139,250,0.35); color: #fff; }
 
-  /* ===== 顶部导航 ===== */
-  .nav { border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 100; }
-  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
-  .brand-logo { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--card); display: grid; place-items: center; font-size: 13px; font-weight: 800; color: var(--accent); }
-  .nav-links { display: flex; gap: 24px; }
-  .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 14px; }
-  .nav-links a:hover { color: var(--text); }
-  .nav-cta { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
-  .nav-cta:hover { background: #1d4ed8; }
+  /* 背景辉光 */
+  .bg-glow {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background:
+      radial-gradient(circle at top, rgba(129,140,248,0.18), transparent 26%),
+      radial-gradient(circle at 80% 8%, rgba(217,70,239,0.10), transparent 22%),
+      linear-gradient(180deg, #08090d 0%, #0e1018 42%, #090a0f 100%);
+  }
+  .bg-glow::before {
+    content: ""; position: absolute; inset-x: 0; top: 0; height: 1px;
+    background: rgba(255,255,255,0.10);
+  }
+  .bg-glow::after {
+    content: ""; position: absolute; left: 50%; top: -120px; width: 620px; height: 620px;
+    transform: translateX(-50%); border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,92,246,0.14), transparent 60%);
+    filter: blur(40px);
+  }
+
+  .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+
+  /* ===== 导航 ===== */
+  .nav { border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); background: rgba(8,9,13,0.6); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-logo { width: 40px; height: 40px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: center; color: var(--text); }
+  .brand-name { font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; font-size: 13px; color: rgba(255,255,255,0.9); }
+  .brand-sub { font-size: 12px; color: var(--text-faint); }
+  .nav-links { display: flex; gap: 8px; }
+  .nav-links a { color: var(--text-dim); text-decoration: none; font-size: 14px; padding: 8px 12px; border-radius: var(--radius-pill); transition: color .2s, background .2s; }
+  .nav-links a:hover { color: #fff; background: var(--surface-hover); }
+  .nav-links a.active { color: #fff; }
+  .nav-cta { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #0b0d12; border: none; border-radius: var(--radius-pill); padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .2s, transform .15s; }
+  .nav-cta:hover { background: rgba(255,255,255,0.9); }
+  .nav-cta:active { transform: scale(0.98); }
 
   /* ===== Hero ===== */
-  .hero { padding: 64px 0 48px; text-align: center; }
-  .hero-badge { display: inline-block; font-size: 12px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; margin-bottom: 20px; background: var(--card); }
-  .hero h1 { font-size: clamp(28px, 4.5vw, 42px); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; line-height: 1.2; }
-  .hero p { font-size: 16px; color: var(--text-dim); max-width: 560px; margin: 0 auto 32px; }
+  .hero { padding: 72px 0 48px; }
+  .hero-grid { display: grid; align-items: center; gap: 48px; grid-template-columns: minmax(0, 1.08fr) 480px; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-pill); padding: 6px 14px; font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); backdrop-filter: blur(6px); }
+  .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 12px rgba(52,211,153,0.8); }
+  .hero h1 { margin-top: 28px; font-size: clamp(38px, 6.2vw, 68px); font-weight: 600; letter-spacing: -0.055em; line-height: 1.12; color: #fff; }
+  .hero p { margin-top: 24px; max-width: 560px; font-size: 17px; line-height: 1.8; color: var(--text-dim); }
+  .hero-actions { margin-top: 34px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: #0b0d12; border: none; border-radius: var(--radius-md); padding: 13px 22px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .2s, transform .15s; }
+  .btn-primary:hover { background: rgba(255,255,255,0.92); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 8px; background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 22px; font-size: 14px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .2s, color .2s; }
+  .btn-ghost:hover { background: var(--surface-hover); color: #fff; }
+  .btn-ghost:active { transform: scale(0.98); }
 
-  /* ===== 预览控制台 ===== */
-  .console { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 64px; }
-  .console-label { font-size: 12px; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
-  .console-input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
-    color: var(--text); font-family: var(--mono); font-size: 14px; padding: 12px 14px; outline: none; transition: border-color .15s, box-shadow .15s;
-  }
-  .console-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+  .feature-strip { margin-top: 48px; display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  .feature-mini { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-md); padding: 20px; backdrop-filter: blur(6px); }
+  .feature-mini .k { font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-faint); }
+  .feature-mini .v { margin-top: 10px; font-size: 22px; font-weight: 600; }
+  .feature-mini .d { margin-top: 8px; font-size: 13px; line-height: 1.6; color: var(--text-dim); }
+
+  /* ===== 预览卡 ===== */
+  .card-panel { border-radius: 32px; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); padding: 16px; backdrop-filter: blur(20px); box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.35); }
+  .card-inner { border-radius: 28px; border: 1px solid var(--border); background: #10131c; overflow: hidden; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding: 16px 20px; }
+  .card-head .label { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); }
+  .card-head .title { margin-top: 4px; font-size: 17px; font-weight: 600; }
+  .card-format { border: 1px solid var(--accent-border); background: var(--accent-soft); color: #e9e3ff; border-radius: var(--radius-pill); padding: 4px 12px; font-size: 12px; font-weight: 600; }
+  .card-body { padding: 20px; }
+  .card-body .img-frame { border-radius: 18px; border: 1px solid var(--border); overflow: hidden; background: #fff; }
+  .card-body .img-frame img { display: block; width: 100%; height: auto; }
+
+  /* ===== 生成器 ===== */
+  .console { border: 1px solid var(--border); background: var(--surface); backdrop-filter: blur(12px); border-radius: var(--radius-lg); padding: 8px; }
+  .console-body { padding: 20px; }
+  .console-label { font-size: 11px; color: var(--text-faint); font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; }
+  .console-input { width: 100%; background: #0b0d12; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text); font-family: var(--mono); font-size: 14px; padding: 13px 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  .console-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,92,246,0.18); }
   .console-row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-  .console-btn { background: var(--accent); color: #fff; border: none; border-radius: var(--radius); padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
-  .console-btn:hover { background: #1d4ed8; }
-  .console-copy { background: var(--card); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s; }
-  .console-copy:hover { background: var(--bg-alt); }
-  .console-status { font-size: 12px; color: var(--text-faint); margin-top: 10px; font-family: var(--mono); }
-  .preview-wrap { margin-top: 18px; border-radius: 8px; background: var(--bg-alt); border: 1px solid var(--border); display: grid; place-items: center; min-height: 260px; padding: 20px; }
-  .preview-wrap img { max-width: 100%; max-height: 500px; display: block; border: 1px solid var(--border); }
+  .console-btn { background: #fff; color: #0b0d12; border: none; border-radius: var(--radius-sm); padding: 11px 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s, transform .15s; }
+  .console-btn:hover { background: rgba(255,255,255,0.9); }
+  .console-btn:active { transform: scale(0.98); }
+  .console-copy { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 11px 18px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .15s, color .15s; }
+  .console-copy:hover { background: var(--surface-hover); color: #fff; }
+  .console-status { font-size: 12px; color: var(--text-faint); margin-top: 12px; font-family: var(--mono); min-height: 18px; }
+  .preview-wrap { margin-top: 18px; border-radius: var(--radius-md); background: #0b0d12; border: 1px solid var(--border); display: grid; place-items: center; min-height: 260px; padding: 20px; }
+  .preview-wrap img { max-width: 100%; max-height: 500px; display: block; border-radius: 8px; }
 
-  /* ===== 快速参数卡 ===== */
-  .presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 64px; }
-  .preset-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-  .preset-card:hover { border-color: var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-  .preset-card .preset-thumb { width: 100%; height: 88px; border-radius: 6px; margin-bottom: 10px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--border); background: var(--bg-alt); }
-  .preset-card .preset-thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .preset-card .preset-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-  .preset-card .preset-url { font-family: var(--mono); font-size: 11px; color: var(--text-dim); word-break: break-all; }
+  /* ===== 特性/示例 ===== */
+  .section { margin-bottom: 88px; }
+  .section-eyebrow { font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-faint); }
+  .section-title { margin-top: 14px; font-size: clamp(22px, 3.4vw, 32px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.2; }
+  .section-sub { margin-top: 16px; color: var(--text-dim); max-width: 620px; font-size: 15px; line-height: 1.8; }
 
-  /* ===== 文档区 ===== */
-  .section { margin-bottom: 72px; }
-  .section-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; }
-  .section-sub { color: var(--text-dim); margin-bottom: 28px; }
-  .docs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-  .doc-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
-  .doc-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .features-grid { margin-top: 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .feature-card { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-lg); padding: 28px; backdrop-filter: blur(6px); transition: border-color .2s, background .2s; }
+  .feature-card:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+  .feature-icon { width: 44px; height: 44px; border-radius: 16px; background: var(--surface-hover); border: 1px solid var(--border); display: grid; place-items: center; margin-bottom: 18px; color: var(--text-dim); }
+  .feature-card h3 { font-size: 19px; font-weight: 600; margin-bottom: 10px; }
+  .feature-card p { color: var(--text-dim); font-size: 14px; line-height: 1.75; }
+
+  /* 示例 URL 列表 */
+  .url-list { margin-top: 40px; display: flex; flex-direction: column; gap: 10px; }
+  .url-row { font-family: var(--mono); font-size: 14px; color: var(--text-dim); border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); padding: 14px 18px; word-break: break-all; transition: border-color .2s, color .2s; cursor: pointer; }
+  .url-row:hover { border-color: var(--border-strong); color: #fff; }
+
+  /* 文档 */
+  .docs-grid { margin-top: 40px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .doc-card { border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-lg); padding: 26px; text-align: left; }
+  .doc-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
   .doc-card h3 .num { color: var(--text-faint); font-family: var(--mono); font-size: 12px; }
   .doc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .doc-table th { text-align: left; color: var(--text-faint); font-weight: 500; padding: 5px 8px; border-bottom: 1px solid var(--border); }
-  .doc-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
-  .doc-table td code { background: var(--bg-alt); border: 1px solid var(--border); color: var(--text); padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: var(--mono); }
-  .code-block { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-family: var(--mono); font-size: 13px; color: var(--text-dim); overflow-x: auto; margin-bottom: 10px; }
-  .code-block .hl { color: var(--accent); }
-  .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-  .format-chip { display: flex; align-items: center; justify-content: space-between; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; }
-  .format-chip .ext { font-family: var(--mono); color: var(--text); font-weight: 600; }
+  .doc-table th { text-align: left; color: var(--text-faint); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .doc-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+  .doc-table td code { background: #0b0d12; border: 1px solid var(--border); color: var(--text-dim); padding: 2px 6px; border-radius: 6px; font-size: 12px; font-family: var(--mono); }
+  .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .format-chip { display: flex; align-items: center; justify-content: space-between; background: #0b0d12; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px; }
+  .format-chip .ext { font-family: var(--mono); color: #fff; font-weight: 600; }
   .format-chip .desc { color: var(--text-faint); font-size: 12px; }
+  .code-block { background: #0b0d12; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 18px; font-family: var(--mono); font-size: 13px; color: var(--text-dim); overflow-x: auto; margin-bottom: 12px; line-height: 1.9; }
+  .code-block .hl { color: #a78bfa; }
+
+  /* ===== 广告位 ===== */
+  .ad-container { margin-top: 28px; }
+  .ad-slot { border: 1px solid var(--accent-border); background: linear-gradient(180deg, rgba(139,92,246,0.10), var(--surface)); border-radius: var(--radius-lg); padding: 24px; backdrop-filter: blur(8px); }
+  .ad-slot .ad-heading { font-size: 15px; font-weight: 600; color: #e9e3ff; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .ad-slot .ad-note { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+  .ad-slot .ad-html { margin-top: 12px; }
 
   /* ===== Footer ===== */
-  .footer { border-top: 1px solid var(--border); padding: 28px 0 36px; text-align: center; color: var(--text-faint); font-size: 13px; }
-  .footer a { color: var(--accent); text-decoration: none; }
+  .footer { border-top: 1px solid var(--border); padding: 32px 0 40px; }
+  .footer-inner { display: flex; flex-direction: column; gap: 14px; }
+  .footer-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  .footer-brand { font-size: 13px; color: var(--text-dim); }
+  .footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
+  .footer-links a { color: var(--text-faint); text-decoration: none; font-size: 13px; transition: color .2s; }
+  .footer-links a:hover { color: #fff; }
+  .footer-copy { font-size: 12px; color: var(--text-faint); }
+  .footer-icp { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--text-faint); }
+  .footer-icp a { color: var(--text-faint); text-decoration: none; transition: color .2s; }
+  .footer-icp a:hover { color: #fff; }
 
   /* ===== Toast ===== */
-  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--text); color: #fff; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 999; transition: transform .3s cubic-bezier(.2,.9,.3,1.2); box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(100px); background: #fff; color: #0b0d12; padding: 11px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 999; transition: transform .3s cubic-bezier(.2,.9,.3,1.2); box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
+  @media (max-width: 1024px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .card-panel { max-width: 560px; }
+  }
   @media (max-width: 640px) {
-    .hero { padding: 44px 0 32px; }
     .nav-links { display: none; }
-    .console { padding: 16px; }
+    .hero { padding: 48px 0 32px; }
+    .feature-strip { grid-template-columns: 1fr; }
+    .hero-actions { flex-direction: column; align-items: stretch; }
+    .btn-primary, .btn-ghost { justify-content: center; text-align: center; }
     .console-row { flex-direction: column; align-items: stretch; }
     .console-btn, .console-copy { text-align: center; }
+    .presets { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
   }
 </style>
 </head>
 <body>
+<div class="bg-glow"></div>
 
 <!-- 导航 -->
 <nav class="nav">
   <div class="container nav-inner">
     <div class="brand">
-      <div class="brand-logo">▦</div>
-      <span>placehoder</span>
+      <div class="brand-logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-3.5-3.5a2 2 0 0 0-2.8 0L6 20"/></svg>
+      </div>
+      <div>
+        <p class="brand-name">Placehoder</p>
+        <p class="brand-sub">轻量占位图服务</p>
+      </div>
     </div>
     <div class="nav-links">
       <a href="#playground">在线预览</a>
       <a href="#examples">示例</a>
       <a href="#docs">文档</a>
     </div>
-    <a class="nav-cta" href="#playground">立即使用</a>
+    <a class="nav-cta" href="#playground">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17L17 7"/></svg>
+      立即使用
+    </a>
   </div>
 </nav>
 
 <!-- Hero -->
 <header class="hero">
-  <div class="container">
-    <div class="hero-badge">轻量 · 快速 · 免安装</div>
-    <h1>一行 URL，生成任意占位图</h1>
-    <p>为你的公众号排版、网页设计、文档配图提供即取即用的占位图片。支持 6 种格式、任意尺寸、自定义颜色与文字。</p>
+  <div class="container hero-grid">
+    <div>
+      <div class="hero-badge"><span class="dot"></span> 中文优先的占位图服务</div>
+      <h1>一行 URL<br>生成支持中文的占位图</h1>
+      <p>支持尺寸、颜色、格式、Retina、自定义文字和字体。适合原型设计、前端联调、管理后台、内容运营和分享图调试。</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="/1200x630/0f172b/e2e8f0/png?text=你好世界&font=cn" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+          打开示例图片
+        </a>
+        <a class="btn-ghost" href="#examples">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9l-6-6-6 6"/><path d="M12 3v18"/></svg>
+          查看 URL 示例
+        </a>
+      </div>
+      <div class="feature-strip">
+        <div class="feature-mini">
+          <p class="k">Format</p>
+          <p class="v">SVG + Raster</p>
+          <p class="d">支持 SVG、PNG、JPEG、GIF、WebP、AVIF。</p>
+        </div>
+        <div class="feature-mini">
+          <p class="k">Text</p>
+          <p class="v">Chinese Ready</p>
+          <p class="d">默认中文字体回退，更适合中文产品场景。</p>
+        </div>
+        <div class="feature-mini">
+          <p class="k">Scale</p>
+          <p class="v">@2x / @3x</p>
+          <p class="d">适配高清封面图、商品图和社交分享图。</p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card-panel">
+      <div class="card-inner">
+        <div class="card-head">
+          <div>
+            <p class="label">Live preview</p>
+            <p class="title">中文图片预览</p>
+          </div>
+          <span class="card-format">PNG</span>
+        </div>
+        <div class="card-body">
+          <div class="img-frame">
+            <img src="/400x250/0f172b/e2e8f0/png?text=你好世界&font=cn" alt="Placehold 中文版预览图">
+          </div>
+          <div class="url-row" style="margin-top:14px" data-full-url data-path="/400x250/0f172b/e2e8f0/png?text=你好世界&font=cn"></div>
+        </div>
+      </div>
+    </aside>
   </div>
 </header>
 
-<!-- 预览控制台 -->
+<!-- 特性 -->
+<section id="features" class="section">
+  <div class="container">
+    <div class="features-grid">
+      <article class="feature-card">
+        <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></svg></div>
+        <h3>参数直观</h3>
+        <p>支持 /600x400、/400、/1200x630@2x.png 这类一眼就懂的写法，不需要引入复杂配置。</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7h2.6c3 0 5.4-2.4 5.4-5.4C22.4 5.9 17.7 2 12 2Z"/></svg></div>
+        <h3>颜色与格式统一</h3>
+        <p>十六进制颜色、CSS 颜色名、透明背景、自定义文字和字体都能直接通过 URL 控制，特别适合自动化生成素材。</p>
+      </article>
+      <article class="feature-card">
+        <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="M22 22l-5-10-5 10"/><path d="M14 18h6"/></svg></div>
+        <h3>中文体验优先</h3>
+        <p>默认中文字体回退更适合电商、内容平台、运营后台和管理系统，不用从英文占位图语境开始迁就业务。</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 在线生成器 -->
 <section id="playground" class="section">
   <div class="container">
     <div class="console">
-      <div class="console-label">在线生成</div>
-      <input class="console-input" id="urlInput" value="/800x500/e5e7eb/111827?text=%E4%BD%A0%E5%A5%BD%EF%BC%8C%E4%B8%96%E7%95%8C" spellcheck="false">
-      <div class="console-row">
-        <button class="console-btn" id="generateBtn">生成图片</button>
-        <button class="console-copy" id="copyBtn">复制 URL</button>
-        <button class="console-copy" id="downloadBtn">下载图片</button>
-      </div>
-      <div class="console-status" id="status">输入路径参数，实时预览</div>
-      <div class="preview-wrap" id="previewWrap">
-        <img id="previewImg" alt="占位图预览">
+      <div class="console-body">
+        <div class="console-label">在线生成</div>
+        <input class="console-input" id="urlInput" value="/800x500/e5e7eb/111827?text=你好，世界" spellcheck="false">
+        <div class="console-row">
+          <button class="console-btn" id="generateBtn">生成图片</button>
+          <button class="console-copy" id="copyBtn">复制 URL</button>
+          <button class="console-copy" id="downloadBtn">下载图片</button>
+        </div>
+        <div class="console-status" id="status">输入路径参数，实时预览</div>
+        <div class="preview-wrap" id="previewWrap">
+          <img id="previewImg" alt="占位图预览">
+        </div>
+        <div id="adContainer"></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 示例 -->
+<!-- URL 示例 -->
 <section id="examples" class="section">
   <div class="container">
-    <h2 class="section-title">快速上手</h2>
-    <p class="section-sub">点击任意卡片，参数自动填入生成器</p>
-    <div class="presets" id="presets">
-      <div class="preset-card" data-url="/800x500/6d5df6/FFFFFF?text=Hero+%E5%A4%B4%E5%9B%BE">
-        <div class="preset-thumb"><img src="" data-src="/800x500/6d5df6/FFFFFF?text=Hero" alt="头图"></div>
-        <div class="preset-name">公众号头图</div>
-        <div class="preset-url">/800x500/6d5df6/FFFFFF?text=...</div>
-      </div>
-      <div class="preset-card" data-url="/600x400/34d399/0b0d14.png?text=%E6%95%B0%E6%8D%AE%E5%9B%BE">
-        <div class="preset-thumb"><img src="" data-src="/600x400/34d399/0b0d14.png?text=Data" alt="数据图"></div>
-        <div class="preset-name">数据配图</div>
-        <div class="preset-url">/600x400/34d399/0b0d14.png?text=...</div>
-      </div>
-      <div class="preset-card" data-url="/400/6d5df6/FFFFFF@2x.png?text=%E5%B9%B3%E6%96%B9%E5%9B%BE">
-        <div class="preset-thumb"><img src="" data-src="/400/6d5df6/FFFFFF@2x.png?text=Square" alt="方图"></div>
-        <div class="preset-name">正方形 · Retina</div>
-        <div class="preset-url">/400/6d5df6/FFFFFF@2x.png?text=...</div>
-      </div>
-      <div class="preset-card" data-url="/800x300/a78bfa/0b0d14.webp?text=%E6%A8%AA%E5%B9%85+%E6%96%87%E6%A1%88">
-        <div class="preset-thumb"><img src="" data-src="/800x300/a78bfa/0b0d14.webp?text=Banner" alt="横幅"></div>
-        <div class="preset-name">横幅 Banner</div>
-        <div class="preset-url">/800x300/a78bfa/0b0d14.webp?text=...</div>
-      </div>
+    <p class="section-eyebrow">Examples</p>
+    <h2 class="section-title">把最常用的场景，写成最短的 URL</h2>
+    <p class="section-sub">这一页不做冗长说明，只展示真正会被复制使用的地址格式。适合直接贴进页面、CMS、管理后台、测试脚本和文档示例。中文可以直接写在 URL 里。</p>
+    <div class="url-list">
+      <div class="url-row" data-full-url data-path="/600x400"></div>
+      <div class="url-row" data-full-url data-path="/600x400.png"></div>
+      <div class="url-row" data-full-url data-path="/600x400/000/fff?text=封面图"></div>
+      <div class="url-row" data-full-url data-path="/600x400/transparent/f00/png?text=中文海报"></div>
+      <div class="url-row" data-full-url data-path="/1200x630@2x.webp?text=分享图&font=cn"></div>
     </div>
   </div>
 </section>
@@ -187,8 +348,9 @@
 <!-- 文档 -->
 <section id="docs" class="section">
   <div class="container">
+    <p class="section-eyebrow">Docs</p>
     <h2 class="section-title">文档</h2>
-    <p class="section-sub">一个 URL 搞定一切，无需注册，无需上传。</p>
+    <p class="section-sub">一个 URL 搞定一切，无需注册，无需上传。默认输出 SVG，按需转栅格格式。</p>
 
     <div class="docs-grid">
       <div class="doc-card">
@@ -200,7 +362,7 @@
           <tr><td><code>/WxH@2x</code></td><td>Retina 2x</td></tr>
           <tr><td><code>/WxH/BG/FG</code></td><td>自定义颜色</td></tr>
           <tr><td><code>.png/.jpg</code></td><td>输出格式</td></tr>
-          <tr><td><code>?text=</code></td><td>自定义文字</td></tr>
+          <tr><td><code>?text=</code></td><td>自定义文字（支持中文）</td></tr>
           <tr><td><code>&font=</code></td><td>字体</td></tr>
         </table>
       </div>
@@ -227,19 +389,29 @@
           <span class="hl">/600x400.png</span> PNG 格式<br>
           <span class="hl">/600x400@2x.png</span> Retina → 1200×800<br>
           <span class="hl">/600x400?text=Hello+World</span> 自定义文字<br>
-          <span class="hl">/600x400?text=%E4%BD%A0%E5%A5%BD&font=cn</span> 中文
+          <span class="hl">/600x400?text=你好世界&font=cn</span> 中文直写
         </div>
         <div style="color: var(--text-faint); font-size: 13px;">
-          尺寸范围 10 ~ 4000 像素；颜色支持 hex / 常用颜色名 / transparent；<code style="color:var(--accent)">\n</code> 可在 text 中换行。
+          尺寸范围 10 ~ 4000 像素；颜色支持 hex / 常用颜色名 / transparent；<code style="color:#a78bfa">\n</code> 可在 text 中换行。中文可直接写在 URL 中，无需强制百分号编码。
         </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- Footer -->
 <footer class="footer">
-  <div class="container">
-    placehoder · 轻量占位图服务 · <a href="https://github.com/HunterXing/placehoder-img" target="_blank" rel="noopener">开源在 GitHub</a>
+  <div class="container footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand" id="footerBrand">placehoder · 轻量占位图服务</div>
+      <div class="footer-links">
+        <a href="#playground">在线预览</a>
+        <a href="#examples">示例</a>
+        <a id="footerGithub" href="https://github.com/HunterXing/placehoder-img" target="_blank" rel="noopener">开源在 GitHub</a>
+      </div>
+    </div>
+    <div class="footer-icp" id="footerIcp"></div>
+    <div class="footer-copy" id="footerCopy"></div>
   </div>
 </footer>
 
@@ -247,11 +419,11 @@
 
 <script>
 (function () {
-  const input = document.getElementById('urlInput');
-  const previewImg = document.getElementById('previewImg');
-  const status = document.getElementById('status');
-  const toast = document.getElementById('toast');
-  let toastTimer;
+  var input = document.getElementById('urlInput');
+  var previewImg = document.getElementById('previewImg');
+  var status = document.getElementById('status');
+  var toast = document.getElementById('toast');
+  var toastTimer;
 
   function showToast(msg) {
     toast.textContent = msg;
@@ -296,16 +468,96 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
-  var cards = document.querySelectorAll('.preset-card');
-  cards.forEach(function (card) {
-    var img = card.querySelector('img');
-    if (img && img.dataset.src) img.src = img.dataset.src;
-    card.addEventListener('click', function () {
-      input.value = card.dataset.url;
-      render();
-      document.getElementById('playground').scrollIntoView({ behavior: 'smooth' });
+  // 将带 data-path 的元素渲染为完整 URL（含中文直写）
+  document.querySelectorAll('[data-full-url]').forEach(function (el) {
+    var path = el.getAttribute('data-path') || '';
+    el.textContent = location.origin + path;
+  });
+
+  // 示例 URL 点击：复制；也支持填入生成器
+  document.querySelectorAll('.url-row').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      if (e.shiftKey) {
+        // Shift+点击 → 填入生成器
+        var path = (el.getAttribute('data-path') || '').replace(/^https?:\/\/[^/]+/i, '');
+        input.value = path;
+        render();
+        document.getElementById('playground').scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+      var text = el.textContent.trim();
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function () { showToast('已复制 URL'); });
+      }
     });
   });
+
+  // ===== 动态 footer / 广告位（从 /config 读取，立即生效）=====
+  function applyConfig(cfg) {
+    var site = cfg.site || {};
+    var footer = cfg.footer || {};
+
+    // 顶部品牌
+    if (site.name && document.getElementById('footerBrand')) {
+      document.getElementById('footerBrand').textContent = site.name + (site.tagline ? ' · ' + site.tagline : '');
+    }
+    if (footer.github && document.getElementById('footerGithub')) {
+      document.getElementById('footerGithub').href = footer.github;
+    }
+    // ICP / 公安备案
+    var icpEl = document.getElementById('footerIcp');
+    if (icpEl) {
+      icpEl.innerHTML = '';
+      if (footer.icp) {
+        var a = document.createElement('a');
+        a.href = footer.icpUrl || 'https://beian.miit.gov.cn/';
+        a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = footer.icp;
+        icpEl.appendChild(a);
+      }
+      if (footer.police) {
+        var a2 = document.createElement('a');
+        a2.href = footer.policeUrl || 'https://beian.mps.gov.cn/';
+        a2.target = '_blank'; a2.rel = 'noopener';
+        a2.textContent = footer.police;
+        icpEl.appendChild(a2);
+      }
+    }
+    // 版权
+    if (footer.copyright && document.getElementById('footerCopy')) {
+      document.getElementById('footerCopy').textContent = footer.copyright;
+    }
+
+    // 广告位
+    var ad = cfg.ad || {};
+    var adContainer = document.getElementById('adContainer');
+    if (adContainer) {
+      if (ad.enabled) {
+        var html = '';
+        if (ad.html) {
+          html = ad.html;
+        } else {
+          html = '<div class="ad-slot">' +
+            '<p class="ad-heading">' + (ad.heading || '推广位') + '</p>' +
+            '<p class="ad-note">' + (ad.note || '这里可以放你的赞助内容，开启后与主题融合展示。') + '</p>' +
+            '</div>';
+        }
+        adContainer.innerHTML = html;
+      } else {
+        adContainer.innerHTML = '';
+      }
+    }
+  }
+
+  // 先渲染兜底文案（避免布局跳动），再异步取配置
+  document.getElementById('footerCopy').textContent = '© ' + new Date().getFullYear() + ' placehoder · 开源在 GitHub';
+  fetch('/config')
+    .then(function (r) { if (!r.ok) throw new Error('config fetch failed'); return r.json(); })
+    .then(applyConfig)
+    .catch(function (e) {
+      // fetch 失败：保留兜底文案，不阻塞页面
+      if (window.console && console.warn) console.warn('[placehoder] config load failed:', e.message);
+    });
 
   render();
 })();

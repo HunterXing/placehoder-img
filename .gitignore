@@ -2,6 +2,8 @@ node_modules/
 *.log
 .DS_Store
 .env
+# 本地运行时配置（底部备案 / 广告位），示例见 config.example.json
+config.json
 # 允许 public/ 下的静态页面
 !public/
 public/*

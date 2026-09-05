@@ -118,6 +118,27 @@ async function main() {
   const cors = (r.headers && r.headers['access-control-allow-origin']) || '';
   check('CORS 头 Access-Control-Allow-Origin: *', cors === '*', `(=${cors})`);
 
+  // 12. 中文直写 URL（raw Chinese，非百分号编码）——浏览器自动编码，Express 解码
+  r = await get('/600x400?text=' + encodeURIComponent('你好世界'));
+  check('中文 query 渲染', r.status === 200 && r.text.includes('你好世界'), `(${r.status})`);
+
+  // 13. 健康检查
+  r = await get('/health');
+  let healthOK = false;
+  try { healthOK = r.status === 200 && JSON.parse(r.text).ok === true; } catch (e) {}
+  check('/health 返回 ok', healthOK, `(${r.status})`);
+
+  // 14. 运行时配置（footer/ad 结构）
+  r = await get('/config');
+  let cfgOK = false, cfgAdOK = false;
+  try {
+    const cfg = JSON.parse(r.text);
+    cfgOK = cfg && cfg.footer && typeof cfg.footer.icp === 'string' && cfg.footer.icpUrl;
+    cfgAdOK = cfg && cfg.ad && typeof cfg.ad.enabled === 'boolean';
+  } catch (e) {}
+  check('/config 返回 footer', cfgOK, `(${r.status})`);
+  check('/config 返回 ad', cfgAdOK, `(${r.status})`);
+
   const failed = results.filter((x) => !x.pass).length;
   console.log(`\n${results.length - failed}/${results.length} 通过`);
   process.exit(failed ? 1 : 0);

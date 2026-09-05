@@ -7,3 +7,5 @@ test.js
 .dockerignore
 .gitignore
 Dockerfile
+# 本地运行时配置在容器里用 -v 挂载，不进镜像
+config.json

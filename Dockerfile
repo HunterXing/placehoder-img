@@ -9,25 +9,35 @@ RUN npm config set proxy "" && npm config set https-proxy "" && npm config set r
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev || npm install --omit=dev
 COPY server.js ./
+COPY config.js ./
 COPY public/ ./public/
 
 # 阶段 2：运行时
 FROM node:22-alpine
-# sharp 需要 libvips 相关系统库
-RUN apk add --no-cache \
+# sharp 需要 libvips 相关系统库；用国内镜像源加速字体下载
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
+    apk add --no-cache \
     libc6-compat \
     vips \
     fontconfig \
     font-noto-cjk \
-    font-noto-cjk-extra \
     ttf-dejavu \
     && rm -rf /var/cache/apk/*
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8227
+# 运行时配置说明：
+#   - 底部署名 / 广告位等通过 -e PH_* 环境变量，或挂载 ./config.json:/app/config.json 可热更新
+#   - 示例: docker run -d -p 8227:8227 \
+#             -e PH_ICP='京ICP备00000000号-1' \
+#             -e PH_POLICE='京公网安备 11000000000000号' \
+#             -e PH_AD_ENABLED=1 \
+#             -v $(pwd)/config.json:/app/config.json \
+#             placehoder-img
 COPY --from=build /app/package.json /app/
 COPY --from=build /app/node_modules/ /app/node_modules/
 COPY --from=build /app/server.js /app/server.js
+COPY --from=build /app/config.js /app/config.js
 COPY --from=build /app/public/ /app/public/
 
 # 非 root 运行

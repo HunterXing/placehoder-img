@@ -19,9 +19,11 @@
 const express = require('express');
 const sharp = require('sharp');
 const path = require('path');
+const { getConfig } = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 8227;
+const START_TIME = Date.now();
 
 // ---------- CORS 支持 ----------
 // 占位图会被任意域名/页面引用（公众号、网页、文档），必须允许跨域
@@ -209,6 +211,20 @@ app.get('/', (req, res) => {
 });
 // 静态资源（如有）
 app.use('/assets', express.static(path.join(PUBLIC_DIR, 'assets')));
+
+// 运行时配置：供首页 footer/广告位动态渲染（立即生效，见 config.js）
+app.get('/config', (req, res) => {
+  const cfg = getConfig();
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Type', 'application/json');
+  res.json(cfg);
+});
+
+// 健康检查：服务可用性探活（对齐参考站 /health）
+app.get('/health', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, service: 'placehoder-img', uptime: Math.floor((Date.now() - START_TIME) / 1000) });
+});
 
 // 捕获所有 GET 请求（express 5 兼容，不用 '*' 通配符）
 app.use((req, res, next) => {

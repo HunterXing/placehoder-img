@@ -1,0 +1,19 @@
+{
+  "site": { "name": "placehoder", "tagline": "轻量占位图服务" },
+  "footer": {
+    "text": "轻量占位图服务，一键生成 SVG/PNG/JPEG/WebP/GIF/AVIF 占位图",
+    "copyright": "© 2026 placehoder · 开源在 GitHub",
+    "github": "https://github.com/HunterXing/placehoder-img",
+    "icp": "粤ICP备2026000000号-1",
+    "icpUrl": "https://beian.miit.gov.cn/",
+    "police": "粤公网安备 44000000000000号",
+    "policeUrl": "https://beian.mps.gov.cn/"
+  },
+  "ad": {
+    "enabled": true,
+    "heading": "赞助伙伴",
+    "note": "感谢赞助支持本项目持续维护。",
+    "html": "",
+    "slot": "bottom"
+  }
+}
