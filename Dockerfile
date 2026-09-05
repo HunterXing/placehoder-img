@@ -14,8 +14,13 @@ COPY public/ ./public/
 
 # 阶段 2：运行时
 FROM node:22-alpine
-# sharp 需要 libvips 相关系统库；用国内镜像源加速字体下载
-RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories && \
+# sharp 需要 libvips 相关系统库与中文字体。
+# 默认使用 Alpine 官方源（GitHub CI 境外网络更稳）；
+# 国内构建机如需加速，可传：--build-arg APK_MIRROR=http://mirrors.aliyun.com
+ARG APK_MIRROR=
+RUN if [ -n "$APK_MIRROR" ]; then \
+      sed -i "s|https\?://dl-cdn.alpinelinux.org|$APK_MIRROR|g" /etc/apk/repositories; \
+    fi && \
     apk add --no-cache \
     libc6-compat \
     vips \
